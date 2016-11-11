@@ -64,7 +64,9 @@ function proxyServer(option){
         socketPort          = option.socketPort    || DEFAULT_WEBSOCKET_PORT, //port for websocket
         proxyConfigPort     = option.webConfigPort || DEFAULT_CONFIG_PORT,    //port to ui config server
         disableWebInterface = !!option.disableWebInterface,
+        disableRecorder = !!option.disableRecorder,
         ifSilent            = !!option.silent;
+        exitOnError = !!option.exitOnError;
 
     if(ifSilent){
         logUtil.setPrintStatus(false);
@@ -112,7 +114,7 @@ function proxyServer(option){
                 util.clearCacheDir(function(){
                     if(option.dbFile){
                         global.recorder = new Recorder({filename: option.dbFile});
-                    }else{
+                    }else if (!disableRecorder) {
                         global.recorder = new Recorder();
                     }
                     callback();
@@ -221,10 +223,12 @@ function proxyServer(option){
                     process.exit();
                 });
 
-                process.on("uncaughtException",function(err){
-                    logUtil.printLog('Caught exception: ' + (err.stack || err), logUtil.T_ERR);
-                    process.exit();
-                });
+                if (exitOnError) {
+                  process.on("uncaughtException",function(err){
+                      logUtil.printLog('Caught exception: ' + (err.stack || err), logUtil.T_ERR);
+                      process.exit();
+                  });
+                }
 
                 callback(null);
             }
@@ -240,6 +244,11 @@ function proxyServer(option){
 
                 var tipText = (proxyType == T_TYPE_HTTP ? "Http" : "Https") + " proxy started at " + color.bold(ip.address() + ":" + proxyPort);
                 logUtil.printLog(color.green(tipText));
+
+                if (option.listening) {
+
+                  option.listening();
+                }
             }else{
                 var tipText = "err when start proxy server :(";
                 logUtil.printLog(color.red(tipText), logUtil.T_ERR);
